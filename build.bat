@@ -10,7 +10,7 @@ echo  ██╔══██╗██║     ██╔══██║██║   
 echo  ██████╔╝███████╗██║  ██║╚██████╗██║  ██╗╚██████╗██║  ██║   ██║
 echo  ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝   ╚═╝
 echo.
-echo  BlackCat Disk Scanner v3.1 — EXE Builder
+echo  BlackCat Disk Scanner v4.0.1 — EXE Builder
 echo  =========================================
 echo.
 
@@ -100,8 +100,8 @@ flet pack %PY_FILE% ^
     %ICON_ARG% ^
     --product-name "BlackCat Disk Scanner" ^
     --file-description "HDD/SSD Sector Scanner" ^
-    --product-version "3.1.0.0" ^
-    --file-version "3.1.0.0" ^
+    --product-version "4.0.1.0" ^
+    --file-version "4.0.1.0" ^
     --company-name "Kuroneko Tools"
 
 if errorlevel 1 (
