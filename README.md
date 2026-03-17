@@ -67,6 +67,13 @@ python disk_scan.py
 
 ## Changelog
 
+### v4.0.0
+- เพิ่ม **PDF Report** หลังสแกนเสร็จ — ปุ่ม Export PDF ปรากฏอัตโนมัติ
+- PDF มี: Scan Info, Statistics, Disk Map (grid สี), Event Log
+- รองรับภาษา EN / TH ในรายงาน
+- บันทึก PDF ไปที่ Desktop อัตโนมัติ
+- ต้องติดตั้ง: `pip install reportlab`
+
 ### v3.2.0
 - เพิ่ม **Dark / Light Theme** สลับได้ทันทีผ่านปุ่มในแถบ header
 - Light mode: พื้นหลังขาว, ข้อความเข้ม, border เทาอ่อน
