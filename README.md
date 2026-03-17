@@ -59,19 +59,16 @@ python disk_scan.py
 
 ---
 
-## Roadmap
-
-- [ ] v4.0 — PDF report generation หลังสแกนเสร็จ
-
----
-
 ## Changelog
+
+### v4.0.1
+- PDF export เปิด **Save dialog** ให้เลือกที่บันทึกเอง (ไม่บันทึกไป Desktop อัตโนมัติ)
+- เปลี่ยน PDF เป็น **Light theme** (พื้นขาว) ประหยัดหมึกเมื่อพิมพ์
 
 ### v4.0.0
 - เพิ่ม **PDF Report** หลังสแกนเสร็จ — ปุ่ม Export PDF ปรากฏอัตโนมัติ
 - PDF มี: Scan Info, Statistics, Disk Map (grid สี), Event Log
 - รองรับภาษา EN / TH ในรายงาน
-- บันทึก PDF ไปที่ Desktop อัตโนมัติ
 - ต้องติดตั้ง: `pip install reportlab`
 
 ### v3.2.0
