@@ -65,6 +65,24 @@ python disk_scan.py
 
 ---
 
+## Changelog
+
+### v3.1.1
+- เพิ่ม **Dark / Light Theme** สลับได้ทันทีผ่านปุ่มในแถบ header
+- Light mode: พื้นหลังขาว, ข้อความเข้ม, border เทาอ่อน
+- Dark mode: ธีมเดิม พื้นหลังดำ
+
+### v3.1
+- Initial release
+- HDD/SSD sector-level read scan
+- EN / TH language support
+- Quick / Full scan mode
+- Disk Map grid, Progress bar, Event Log
+- Demo Mode
+- Serial Number (S/N) display
+
+---
+
 ## License
 
 Internal tool — BlackCat Project
