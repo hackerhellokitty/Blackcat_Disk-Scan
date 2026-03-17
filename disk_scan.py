@@ -1008,7 +1008,7 @@ def main(page: ft.Page) -> None:
     grid_view = ft.GridView(
         controls=grid_cells, runs_count=GRID_COLS,
         max_extent=BLOCK_PX, child_aspect_ratio=1.0,
-        spacing=3, run_spacing=3, expand=True,
+        spacing=3, run_spacing=3, height=280,
     )
 
     # ── log ───────────────────────────────────────────────────────────────────
@@ -1302,11 +1302,11 @@ def main(page: ft.Page) -> None:
 
     grid_stack = ft.Stack(
         controls=[
-            ft.Container(content=grid_view, expand=True),
+            ft.Container(content=grid_view),
             ft.Container(content=demo_watermark,
-                         alignment=ft.Alignment(0, 0), expand=True),
+                         alignment=ft.Alignment(0, 0), height=280),
         ],
-        expand=True,
+        height=280,
     )
 
     map_panel = _panel(
@@ -1316,7 +1316,6 @@ def main(page: ft.Page) -> None:
                 _dot_row(GREEN, dot_ok),
                 _dot_row(RED, dot_bad_lbl)], spacing=14),
         grid_stack,
-        height=300, expand=True,
     )
 
     log_panel = _panel(lbl_log, ft.Container(content=log_list, height=140))
@@ -1349,7 +1348,7 @@ def main(page: ft.Page) -> None:
                    vertical_alignment=ft.CrossAxisAlignment.START),
             map_panel,
             log_panel,
-        ], spacing=14),
+        ], spacing=14, scroll=ft.ScrollMode.AUTO),
         padding=ft.Padding(20, 18, 20, 18),
         expand=True,
     )
