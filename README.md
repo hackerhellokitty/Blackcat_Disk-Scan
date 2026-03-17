@@ -11,7 +11,7 @@
 - Flet >= 0.80
 
 ```bash
-pip install flet
+pip install flet reportlab
 ```
 
 ---
@@ -36,13 +36,14 @@ python disk_scan.py
 | Full | 512 KB / block | ตรวจสอบละเอียด ครอบคลุมทุก sector |
 
 - ตรวจจับ **bad sector** จากการ read error ระดับ OS
+- เมื่อพบ bad sector จะบันทึก **byte offset** (decimal + hex) ลง **Windows Event Log** (Application) อัตโนมัติ
 - เลือกพฤติกรรมเมื่อพบ bad sector: **หยุดทันที** หรือ **สแกนต่อจนจบ**
 - แสดง **Serial Number (S/N)** ของ drive ที่เลือก
 
 ### UI
 - **Disk Map** — grid แสดงสถานะแต่ละ block (เทา = ยังไม่สแกน, เขียว = OK, แดง = Bad)
 - **Progress bar** พร้อม MB scanned / total, ความเร็ว MB/s, จำนวน bad sector
-- **Event Log** บันทึกเหตุการณ์พร้อม timestamp
+- **Event Log** บันทึกเหตุการณ์พร้อม timestamp รวมถึง byte offset ของ bad sector ที่พบ
 - **Demo Mode** — จำลองการสแกนแบบสุ่มโดยไม่อ่าน disk จริง
 
 ### ภาษา
@@ -60,6 +61,13 @@ python disk_scan.py
 ---
 
 ## Changelog
+
+### v4.1.0
+- **Windows Event Log** — เมื่อพบ bad sector จะบันทึก Warning entry ลง Application Event Log อัตโนมัติ
+  - ระบุ: PhysicalDrive index, byte offset (decimal + hex `0x...`), จำนวน bad sector สะสม
+  - ใช้ `pywin32` ถ้ามี ไม่มีจะ fallback ไป `eventcreate.exe` (built-in Windows)
+- **PDF ภาษาไทย** — แก้ปัญหาตัวอักษรไทยแสดงเป็นกล่องสี่เหลี่ยม โดย register font Leelawadee UI / Leelawadee (มีใน Windows) ให้ ReportLab อัตโนมัติ
+- Bump version to **v4.1.0**
 
 ### v4.0.1
 - PDF export เปิด **Save dialog** ให้เลือกที่บันทึกเอง (ไม่บันทึกไป Desktop อัตโนมัติ)
