@@ -51,17 +51,40 @@ def relaunch_as_admin() -> None:
 #  CONSTANTS — theme & grid
 # ══════════════════════════════════════════════════════════════════════════════
 
-BG_DARK   = "#0D0D0D"
-BG_PANEL  = "#141414"
-BG_CARD   = "#1C1C1C"
-BORDER    = "#2C2C2C"
-ACCENT    = "#FF3B30"
-ACCENT2   = "#FF9F0A"
-TEXT_PRI  = "#F0F0F0"
-TEXT_SEC  = "#888888"
-GREEN     = "#30D158"
-RED       = "#FF3B30"
-GREY_BLK  = "#2A2A2A"
+ACCENT  = "#FF3B30"
+ACCENT2 = "#FF9F0A"
+GREEN   = "#30D158"
+RED     = "#FF3B30"
+
+THEMES: dict[str, dict[str, str]] = {
+    "dark": {
+        "bg":       "#0D0D0D",
+        "panel":    "#141414",
+        "card":     "#1C1C1C",
+        "border":   "#2C2C2C",
+        "text_pri": "#F0F0F0",
+        "text_sec": "#888888",
+        "grey_blk": "#2A2A2A",
+    },
+    "light": {
+        "bg":       "#F2F2F7",
+        "panel":    "#FFFFFF",
+        "card":     "#F0F0F5",
+        "border":   "#C6C6C8",
+        "text_pri": "#1C1C1E",
+        "text_sec": "#6C6C70",
+        "grey_blk": "#C7C7CC",
+    },
+}
+
+# Dark-theme aliases used at widget-creation time
+BG_DARK  = THEMES["dark"]["bg"]
+BG_PANEL = THEMES["dark"]["panel"]
+BG_CARD  = THEMES["dark"]["card"]
+BORDER   = THEMES["dark"]["border"]
+TEXT_PRI = THEMES["dark"]["text_pri"]
+TEXT_SEC = THEMES["dark"]["text_sec"]
+GREY_BLK = THEMES["dark"]["grey_blk"]
 
 GRID_COLS  = 30
 BLOCK_PX   = 22
@@ -456,9 +479,16 @@ def main(page: ft.Page) -> None:
     stop_event   = threading.Event()
     cur_lang     = ["EN"]
     demo_mode    = [False]
+    cur_theme    = ["dark"]
 
     def T(key: str) -> str:
         return LANGS[cur_lang[0]].get(key, key)
+
+    def _th() -> dict[str, str]:
+        return THEMES[cur_theme[0]]
+
+    _panels:   list[ft.Container] = []
+    _dividers: list[ft.Divider]   = []
 
     try:
         _loop = asyncio.get_running_loop()
@@ -475,7 +505,8 @@ def main(page: ft.Page) -> None:
         except Exception:
             pass
 
-    def add_log(msg: str, color: str = TEXT_SEC) -> None:
+    def add_log(msg: str, color: str | None = None) -> None:
+        color = color or _th()["text_sec"]
         ts = time.strftime("%H:%M:%S")
         log_list.controls.append(
             ft.Text(f"[{ts}]  {msg}", size=13, color=color,
@@ -650,6 +681,23 @@ def main(page: ft.Page) -> None:
         ),
     )
 
+    # ── theme toggle ──────────────────────────────────────────────────────────
+    def _toggle_theme(_) -> None:
+        cur_theme[0] = "light" if cur_theme[0] == "dark" else "dark"
+        apply_theme()
+
+    theme_btn = ft.IconButton(
+        icon=ft.Icons.LIGHT_MODE,
+        icon_color=ACCENT2,
+        icon_size=20,
+        tooltip="Toggle theme",
+        on_click=_toggle_theme,
+        style=ft.ButtonStyle(
+            overlay_color={"": "#332200"},
+            shape=ft.RoundedRectangleBorder(radius=8),
+        ),
+    )
+
     # ── grid ──────────────────────────────────────────────────────────────────
     grid_cells: list[ft.Container] = [
         ft.Container(width=BLOCK_PX, height=BLOCK_PX,
@@ -758,10 +806,10 @@ def main(page: ft.Page) -> None:
 
         confirm_dlg = ft.AlertDialog(
             modal=True, open=True,
-            title=ft.Text(T("dlg_title"), color=TEXT_PRI,
+            title=ft.Text(T("dlg_title"), color=_th()["text_pri"],
                           weight=ft.FontWeight.W_500, size=16),
-            content=ft.Text(T("dlg_body"), color=TEXT_SEC, size=14),
-            bgcolor=BG_CARD,
+            content=ft.Text(T("dlg_body"), color=_th()["text_sec"], size=14),
+            bgcolor=_th()["card"],
             actions=[
                 ft.TextButton(T("dlg_cancel"), on_click=_cancel,
                               style=ft.ButtonStyle(
@@ -779,11 +827,57 @@ def main(page: ft.Page) -> None:
         page.overlay.append(confirm_dlg)
         _safe_update()
 
+    # ── apply theme ───────────────────────────────────────────────────────────
+    def apply_theme() -> None:
+        th      = _th()
+        is_dark = cur_theme[0] == "dark"
+
+        page.bgcolor    = th["bg"]
+        page.theme_mode = ft.ThemeMode.DARK if is_dark else ft.ThemeMode.LIGHT
+
+        header.bgcolor = th["panel"]
+        header.border  = ft.Border(bottom=ft.BorderSide(1, th["border"]))
+
+        for p in _panels:
+            p.bgcolor = th["panel"]
+            p.border  = ft.Border(
+                top=ft.BorderSide(1, th["border"]), bottom=ft.BorderSide(1, th["border"]),
+                left=ft.BorderSide(1, th["border"]), right=ft.BorderSide(1, th["border"]))
+
+        for d in _dividers:
+            d.color = th["border"]
+
+        for w in [lbl_cfg, lbl_status, lbl_map, lbl_log, lbl_scan_mode, lbl_on_bad,
+                  dot_unscan, dot_ok, dot_bad_lbl, txt_serial, txt_subtitle]:
+            w.color = th["text_sec"]
+
+        txt_progress.color = th["text_pri"]
+
+        for rb in [rb_quick, rb_full, rb_stop_first, rb_continue]:
+            rb.label_style = ft.TextStyle(color=th["text_pri"], size=14)
+
+        dd_drive.bgcolor      = th["card"]
+        dd_drive.border_color = th["border"]
+        dd_drive.color        = th["text_pri"]
+        dd_drive.label_style  = ft.TextStyle(color=th["text_sec"], size=13)
+        dd_drive.text_style   = ft.TextStyle(color=th["text_pri"], size=14)
+
+        prog_bar.bgcolor = th["card"]
+
+        for cell in grid_cells:
+            if cell.bgcolor not in (GREEN, RED):
+                cell.bgcolor = th["grey_blk"]
+
+        theme_btn.icon       = ft.Icons.LIGHT_MODE if is_dark else ft.Icons.DARK_MODE
+        theme_btn.icon_color = ACCENT2 if is_dark else TEXT_SEC
+
+        _safe_update()
+
     # ── apply language ────────────────────────────────────────────────────────
     def apply_lang() -> None:
         for code, btn in lang_btns.items():
             btn.style = ft.ButtonStyle(
-                color={"": ACCENT if code == cur_lang[0] else TEXT_SEC},
+                color={"": ACCENT if code == cur_lang[0] else _th()["text_sec"]},
                 padding=ft.Padding(10, 6, 10, 6),
                 text_style=ft.TextStyle(size=14, weight=ft.FontWeight.W_500),
             )
@@ -823,18 +917,23 @@ def main(page: ft.Page) -> None:
 
     def _panel(header_widget: ft.Text, *children,
                width=None, height=None, expand=False) -> ft.Container:
-        return ft.Container(
+        th = _th()
+        div = ft.Divider(height=1, color=th["border"])
+        _dividers.append(div)
+        c = ft.Container(
             content=ft.Column(
-                [header_widget, ft.Divider(height=1, color=BORDER), *children],
+                [header_widget, div, *children],
                 spacing=10, expand=expand),
-            bgcolor=BG_PANEL,
+            bgcolor=th["panel"],
             border=ft.Border(
-                top=ft.BorderSide(1, BORDER), bottom=ft.BorderSide(1, BORDER),
-                left=ft.BorderSide(1, BORDER), right=ft.BorderSide(1, BORDER)),
+                top=ft.BorderSide(1, th["border"]), bottom=ft.BorderSide(1, th["border"]),
+                left=ft.BorderSide(1, th["border"]), right=ft.BorderSide(1, th["border"])),
             border_radius=8,
             padding=ft.Padding(18, 14, 18, 14),
             width=width, height=height, expand=expand,
         )
+        _panels.append(c)
+        return c
 
     # ── layout ────────────────────────────────────────────────────────────────
     config_panel = _panel(
@@ -880,16 +979,20 @@ def main(page: ft.Page) -> None:
 
     log_panel = _panel(lbl_log, ft.Container(content=log_list, height=140))
 
+    txt_subtitle = ft.Text("Disk Scanner  v3.1.1", size=13, color=TEXT_SEC)
+
     header = ft.Container(
         content=ft.Row([
             ft.Column([
                 ft.Text("BlackCat", size=26,
                         weight=ft.FontWeight.BOLD, color=ACCENT),
-                ft.Text("Disk Scanner  v3.1.1", size=13, color=TEXT_SEC),
+                txt_subtitle,
             ], spacing=1),
             ft.Container(expand=True),
             admin_row,
-            ft.Container(width=16),
+            ft.Container(width=8),
+            theme_btn,
+            ft.Container(width=8),
             lang_row,
         ]),
         bgcolor=BG_PANEL,
@@ -926,13 +1029,14 @@ def main(page: ft.Page) -> None:
     _refresh_thread.start()
 
     apply_lang()
+    apply_theme()
 
     if not admin_mode and platform.system() == "Windows":
         btn_start.disabled = True
         add_log("⚠  Not running as Administrator — scan disabled.", RED)
-        add_log("   Enable Demo Mode to test UI without admin rights.", TEXT_SEC)
+        add_log("   Enable Demo Mode to test UI without admin rights.")
     else:
-        add_log(T("log_ready"), TEXT_SEC)
+        add_log(T("log_ready"))
 
     _safe_update()
 
