@@ -1321,7 +1321,7 @@ def main(page: ft.Page) -> None:
 
     log_panel = _panel(lbl_log, ft.Container(content=log_list, height=140))
 
-    txt_subtitle = ft.Text("Disk Scanner  v3.2.0", size=13, color=TEXT_SEC)
+    txt_subtitle = ft.Text("Disk Scanner  v4.0.1", size=13, color=TEXT_SEC)
 
     header = ft.Container(
         content=ft.Row([
