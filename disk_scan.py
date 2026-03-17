@@ -1,5 +1,5 @@
 """
-BlackCat Disk Scanner v4.0.0
+BlackCat Disk Scanner v4.1.0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Tool 22  — HDD / SSD sector-level read scan
 Platform — Windows (Administrator required for raw access)
@@ -22,6 +22,49 @@ import time
 
 # ── third-party ────────────────────────────────────────────────────────────────
 import flet as ft
+
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  WINDOWS EVENT LOG
+# ══════════════════════════════════════════════════════════════════════════════
+
+_EVT_SOURCE = "BlackCat DiskScanner"
+
+def write_event_log(disk_index: int, byte_offset: int, bad_count: int) -> None:
+    """Write a Warning entry to Windows Application Event Log when a bad sector is found."""
+    if platform.system() != "Windows":
+        return
+    msg = (
+        f"Bad sector detected on PhysicalDrive{disk_index}  |  "
+        f"Byte offset: {byte_offset:,} (0x{byte_offset:016X})  |  "
+        f"Bad sector count so far: {bad_count}"
+    )
+    # Try pywin32 first (optional), fall back to eventcreate.exe
+    try:
+        import win32evtlogutil
+        import win32evtlog
+        win32evtlogutil.ReportEvent(
+            _EVT_SOURCE,
+            eventID=1,
+            eventCategory=0,
+            eventType=win32evtlog.EVENTLOG_WARNING_TYPE,
+            strings=[msg],
+        )
+        return
+    except Exception:
+        pass
+    # Fallback: eventcreate.exe (built-in on all Windows versions)
+    try:
+        subprocess.run(
+            ["eventcreate", "/T", "WARNING", "/ID", "1",
+             "/L", "APPLICATION", "/SO", _EVT_SOURCE, "/D", msg],
+            capture_output=True, timeout=8,
+            creationflags=_NO_WINDOW,
+        )
+    except Exception:
+        pass
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -302,9 +345,6 @@ def _parse_pipe_lines(stdout: str) -> list[dict]:
     return drives
 
 
-_NO_WINDOW = subprocess.CREATE_NO_WINDOW if platform.system() == "Windows" else 0
-
-
 def _run_ps(command: str, timeout: int = 12) -> str:
     try:
         r = subprocess.run(
@@ -428,15 +468,16 @@ def scan_disk(
                 return
             speed = 60.0 + random.uniform(0, 70)
             time.sleep(block_size / (speed * MB))
+            demo_byte_offset = i * block_size
             if _is_bad(i):
                 bad_count += 1
-                on_block(i, "red")
+                on_block(i, "red", demo_byte_offset)
                 if stop_on_bad:
                     on_progress(i * mb_per_block, DEMO_SIZE_MB, bad_count, speed)
                     on_finish("FAILED", bad_count)
                     return
             else:
-                on_block(i, "green")
+                on_block(i, "green", demo_byte_offset)
             on_progress((i + 1) * mb_per_block, DEMO_SIZE_MB, bad_count, speed)
 
         on_finish("SUCCESS" if not bad_count else "DONE_WITH_ERRORS", bad_count)
@@ -467,10 +508,10 @@ def scan_disk(
                     data = disk.read(block_size)
                     if not data:
                         break
-                    on_block(blk_idx, "green")
+                    on_block(blk_idx, "green", pos)
                 except OSError:
                     bad_count += 1
-                    on_block(blk_idx, "red")
+                    on_block(blk_idx, "red", pos)
                     if stop_on_bad:
                         elapsed = max(0.001, time.time() - t0)
                         on_progress(pos // MB, disk_total // MB,
@@ -512,8 +553,37 @@ def generate_pdf_report(report: dict, lang: str = "EN", save_path: str | None = 
     from reportlab.lib.units    import mm
     from reportlab.pdfgen       import canvas as _cv
     from reportlab.lib.colors   import HexColor
+    from reportlab.pdfbase      import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
 
     L = LANGS.get(lang, LANGS["EN"])
+
+    # ── register Thai-capable font when lang == TH ────────────────────────────
+    _FONT_NORM = "Helvetica"
+    _FONT_BOLD = "Helvetica-Bold"
+
+    if lang == "TH":
+        _THAI_CANDIDATES = [
+            # Leelawadee UI (Win 10/11)
+            (r"C:\Windows\Fonts\LeelawUI.ttf",  r"C:\Windows\Fonts\LeelawUI.ttf"),
+            # Leelawadee (Win 7/8)
+            (r"C:\Windows\Fonts\leelawad.ttf",  r"C:\Windows\Fonts\leelawdb.ttf"),
+            # Tahoma (partial Thai)
+            (r"C:\Windows\Fonts\tahoma.ttf",    r"C:\Windows\Fonts\tahomabd.ttf"),
+        ]
+        for norm_path, bold_path in _THAI_CANDIDATES:
+            if os.path.isfile(norm_path):
+                try:
+                    pdfmetrics.registerFont(TTFont("ThaiNorm", norm_path))
+                    if os.path.isfile(bold_path):
+                        pdfmetrics.registerFont(TTFont("ThaiBold", bold_path))
+                    else:
+                        pdfmetrics.registerFont(TTFont("ThaiBold", norm_path))
+                    _FONT_NORM = "ThaiNorm"
+                    _FONT_BOLD = "ThaiBold"
+                except Exception:
+                    pass
+                break
 
     C_RED    = HexColor("#FF3B30")
     C_GREEN  = HexColor("#30D158")
@@ -551,10 +621,10 @@ def generate_pdf_report(report: dict, lang: str = "EN", save_path: str | None = 
         c.setFont("Helvetica-Bold", 30)
         c.drawString(20*mm, H - 28*mm, "BlackCat")
         c.setFillColor(C_TXT)
-        c.setFont("Helvetica", 13)
-        c.drawString(20*mm, H - 40*mm, "Disk Scanner  v4.0.0   —   Scan Report")
+        c.setFont(_FONT_NORM, 13)
+        c.drawString(20*mm, H - 40*mm, "Disk Scanner  v4.1.0   —   Scan Report")
         c.setFillColor(C_SEC)
-        c.setFont("Helvetica", 9)
+        c.setFont(_FONT_NORM, 9)
         now_str = datetime.datetime.now().strftime("%Y-%m-%d  %H:%M:%S")
         c.drawRightString(W - 20*mm, H - 28*mm, now_str)
 
@@ -566,7 +636,7 @@ def generate_pdf_report(report: dict, lang: str = "EN", save_path: str | None = 
         c.rect(0, 12*mm, W, 0.5*mm, fill=1, stroke=0)
         c.setFillColor(C_SEC)
         c.setFont("Helvetica", 7)
-        c.drawString(20*mm, 4*mm, "BlackCat Disk Scanner v4.0.0  —  Generated automatically")
+        c.drawString(20*mm, 4*mm, "BlackCat Disk Scanner v4.1.0  —  Generated automatically")
         c.drawRightString(W - 20*mm, 4*mm, os.path.basename(path))
 
     # ── section title ────────────────────────────────────────────────────────
@@ -577,7 +647,7 @@ def generate_pdf_report(report: dict, lang: str = "EN", save_path: str | None = 
         c.setFillColor(C_RED)
         c.rect(15*mm, y - 8*mm, 3*mm, 9*mm, fill=1, stroke=0)
         c.setFillColor(C_TXT)
-        c.setFont("Helvetica-Bold", 10)
+        c.setFont(_FONT_BOLD, 10)
         c.drawString(22*mm, y - 4*mm, title)
         return y - 13*mm
 
@@ -591,10 +661,10 @@ def generate_pdf_report(report: dict, lang: str = "EN", save_path: str | None = 
             c.setLineWidth(0.3)
             c.rect(15*mm, y - rh, W - 30*mm, rh, fill=0, stroke=1)
             c.setFillColor(C_SEC)
-            c.setFont("Helvetica", 9)
+            c.setFont(_FONT_NORM, 9)
             c.drawString(20*mm, y - 5*mm, key)
             c.setFillColor(C_TXT)
-            c.setFont("Helvetica-Bold", 9)
+            c.setFont(_FONT_BOLD, 9)
             c.drawString(80*mm, y - 5*mm, str(val))
             y -= rh
         return y
@@ -619,7 +689,7 @@ def generate_pdf_report(report: dict, lang: str = "EN", save_path: str | None = 
             c.setFillColor(col)
             c.rect(15*mm, ly - 3*mm, 4*mm, 4*mm, fill=1, stroke=0)
             c.setFillColor(C_SEC)
-            c.setFont("Helvetica", 8)
+            c.setFont(_FONT_NORM, 8)
             c.drawString(21*mm, ly - 2*mm, label)
             ly -= 6*mm
         return ly - 4*mm
@@ -640,7 +710,7 @@ def generate_pdf_report(report: dict, lang: str = "EN", save_path: str | None = 
             c.setFont("Helvetica", 7.5)
             c.drawString(20*mm, y - 3.5*mm, ts_s)
             c.setFillColor(C_TXT)
-            c.setFont("Helvetica", 7.5)
+            c.setFont(_FONT_NORM, 7.5)
             c.drawString(42*mm, y - 3.5*mm, msg[:90])
             y -= rh
         return y
@@ -1015,11 +1085,26 @@ def main(page: ft.Page) -> None:
     log_list = ft.ListView(expand=True, spacing=1, auto_scroll=True)
 
     # ── scan callbacks ────────────────────────────────────────────────────────
-    def _on_block(index: int, status: str) -> None:
+    def _on_block(index: int, status: str, byte_offset: int = 0) -> None:
         vi = min(index, MAX_BLOCKS - 1)
         grid_cells[vi].bgcolor = GREEN if status == "green" else RED
         if index < len(_block_states):
             _block_states[index] = status
+        if status == "red":
+            disk_idx = int(dd_drive.value or 0)
+            # Count bad sectors found so far
+            bad_so_far = sum(1 for s in _block_states if s == "red")
+            bad_msg = (
+                f"Bad sector — Disk {disk_idx}  |  "
+                f"Byte offset: {byte_offset:,} (0x{byte_offset:016X})  |  "
+                f"Block #{index}  |  Bad count: {bad_so_far}"
+            )
+            add_log(f"⚠  {bad_msg}", RED)
+            threading.Thread(
+                target=write_event_log,
+                args=(disk_idx, byte_offset, bad_so_far),
+                daemon=True, name="evtlog-bad",
+            ).start()
         _safe_update()
 
     def _on_progress(scanned_mb: int, total_mb: int,
@@ -1320,7 +1405,7 @@ def main(page: ft.Page) -> None:
 
     log_panel = _panel(lbl_log, ft.Container(content=log_list, height=140))
 
-    txt_subtitle = ft.Text("Disk Scanner  v4.0.1", size=13, color=TEXT_SEC)
+    txt_subtitle = ft.Text("Disk Scanner  v4.1.0", size=13, color=TEXT_SEC)
 
     header = ft.Container(
         content=ft.Row([
