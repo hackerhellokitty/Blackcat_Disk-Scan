@@ -504,8 +504,8 @@ def scan_disk(
 #  PDF REPORT
 # ══════════════════════════════════════════════════════════════════════════════
 
-def generate_pdf_report(report: dict, lang: str = "EN") -> str:
-    """Build a PDF scan report and save to Desktop. Returns file path."""
+def generate_pdf_report(report: dict, lang: str = "EN", save_path: str | None = None) -> str:
+    """Build a PDF scan report. Returns file path."""
     import os
     import datetime
     from reportlab.lib.pagesizes import A4
@@ -517,24 +517,27 @@ def generate_pdf_report(report: dict, lang: str = "EN") -> str:
 
     C_RED    = HexColor("#FF3B30")
     C_GREEN  = HexColor("#30D158")
-    C_DARK   = HexColor("#0D0D0D")
-    C_PANEL  = HexColor("#141414")
-    C_CARD   = HexColor("#1C1C1C")
-    C_BORDER = HexColor("#2C2C2C")
-    C_TXT    = HexColor("#F0F0F0")
-    C_SEC    = HexColor("#888888")
-    C_GREY   = HexColor("#2A2A2A")
+    C_BG     = HexColor("#FFFFFF")
+    C_PANEL  = HexColor("#F2F2F7")
+    C_CARD   = HexColor("#EBEBF0")
+    C_BORDER = HexColor("#C6C6C8")
+    C_TXT    = HexColor("#1C1C1E")
+    C_SEC    = HexColor("#6C6C70")
+    C_GREY   = HexColor("#AEAEB2")
 
-    desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-    ts_file = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    path    = os.path.join(desktop, f"BlackCat_DiskScan_{ts_file}.pdf")
+    if save_path:
+        path = save_path
+    else:
+        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+        ts_file = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        path    = os.path.join(desktop, f"BlackCat_DiskScan_{ts_file}.pdf")
 
     W, H = A4
     c    = _cv.Canvas(path, pagesize=A4)
 
-    # ── dark background on all pages ─────────────────────────────────────────
+    # ── white background on all pages ────────────────────────────────────────
     def _bg():
-        c.setFillColor(C_DARK)
+        c.setFillColor(C_BG)
         c.rect(0, 0, W, H, fill=1, stroke=0)
 
     # ── header bar ───────────────────────────────────────────────────────────
@@ -927,19 +930,44 @@ def main(page: ft.Page) -> None:
         if not scan_report[0]:
             add_log(T("pdf_no_report"), ACCENT2)
             return
-        add_log(T("pdf_saving"), ACCENT2)
-        btn_pdf.disabled = True
-        _safe_update()
-        def _do_export():
+
+        def _ask_and_export():
+            import os, datetime
+            import tkinter as tk
+            from tkinter import filedialog
+            ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            default_name = f"BlackCat_DiskScan_{ts}.pdf"
+            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+
+            root = tk.Tk()
+            root.withdraw()
+            root.attributes("-topmost", True)
+            save_path = filedialog.asksaveasfilename(
+                parent=root,
+                title="Save PDF Report",
+                defaultextension=".pdf",
+                filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")],
+                initialfile=default_name,
+                initialdir=desktop,
+            )
+            root.destroy()
+
+            if not save_path:
+                return  # user cancelled
+
+            add_log(T("pdf_saving"), ACCENT2)
+            btn_pdf.disabled = True
+            _safe_update()
             try:
-                path = generate_pdf_report(scan_report[0], cur_lang[0])
+                path = generate_pdf_report(scan_report[0], cur_lang[0], save_path=save_path)
                 add_log(T("pdf_saved").format(path=path), GREEN)
             except Exception as e:
                 add_log(T("pdf_error").format(err=e), RED)
             finally:
                 btn_pdf.disabled = False
                 _safe_update()
-        threading.Thread(target=_do_export, daemon=True, name="pdf-export").start()
+
+        threading.Thread(target=_ask_and_export, daemon=True, name="pdf-export").start()
 
     btn_pdf_lbl = ft.Text("", color="#FFFFFF", size=13, weight=ft.FontWeight.W_500)
     btn_pdf = ft.FilledButton(
