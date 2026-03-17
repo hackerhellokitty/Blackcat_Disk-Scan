@@ -67,12 +67,12 @@ python disk_scan.py
 
 ## Changelog
 
-### v3.1.1
+### v3.2.0
 - เพิ่ม **Dark / Light Theme** สลับได้ทันทีผ่านปุ่มในแถบ header
 - Light mode: พื้นหลังขาว, ข้อความเข้ม, border เทาอ่อน
 - Dark mode: ธีมเดิม พื้นหลังดำ
 
-### v3.1
+### v3.1.0
 - Initial release
 - HDD/SSD sector-level read scan
 - EN / TH language support

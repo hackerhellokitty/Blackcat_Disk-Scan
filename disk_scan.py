@@ -1,5 +1,5 @@
 """
-BlackCat Disk Scanner v3.1.1
+BlackCat Disk Scanner v3.2.0
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Tool 22  — HDD / SSD sector-level read scan
 Platform — Windows (Administrator required for raw access)
@@ -979,7 +979,7 @@ def main(page: ft.Page) -> None:
 
     log_panel = _panel(lbl_log, ft.Container(content=log_list, height=140))
 
-    txt_subtitle = ft.Text("Disk Scanner  v3.1.1", size=13, color=TEXT_SEC)
+    txt_subtitle = ft.Text("Disk Scanner  v3.2.0", size=13, color=TEXT_SEC)
 
     header = ft.Container(
         content=ft.Row([
