@@ -29,3 +29,9 @@ cmake_install.cmake
 # Temp / logs
 *.log
 *.tmp
+
+# Claude Code settings
+.claude/
+
+# dist — tracked selectively via dist/**  !dist/*.exe above
+dist/
